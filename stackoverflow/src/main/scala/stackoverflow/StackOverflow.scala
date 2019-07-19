@@ -24,8 +24,8 @@ object StackOverflow extends StackOverflow {
     val raw     = rawPostings(lines)
     val grouped = groupedPostings(raw)
     val scored  = scoredPostings(grouped)
-    //val vectors = vectorPostings(scored)
-//    assert(vectors.count() == 2121822, "Incorrect number of vectors: " + vectors.count())
+    val vectors = vectorPostings(scored)
+    assert(vectors.count() == 2121822, "Incorrect number of vectors: " + vectors.count())
 
     //val means   = kmeans(sampleVectors(vectors), vectors, debug = true)
     //val results = clusterResults(means, vectors)
@@ -117,15 +117,14 @@ class StackOverflow extends Serializable {
         }
       }
     }
-
-    ???
+    scored.map(score => (firstLangInTag(score._1.tags, langs).getOrElse(0)*langSpread, score._2)).cache()
   }
 
 
   /** Sample the vectors */
   def sampleVectors(vectors: RDD[(LangIndex, HighScore)]): Array[(Int, Int)] = {
 
-    assert(kmeansKernels % langs.length == 0, "kmeansKernels should be a multiple of the number of languages studied.")
+    assert(kmeansKernels % langs.length == 0, "kmeans Kernels should be a multiple of the number of languages studied.")
     val perLang = kmeansKernels / langs.length
 
     // http://en.wikipedia.org/wiki/Reservoir_sampling
