@@ -27,9 +27,9 @@ object StackOverflow extends StackOverflow {
     val vectors = vectorPostings(scored)
     assert(vectors.count() == 2121822, "Incorrect number of vectors: " + vectors.count())
 
-    //val means   = kmeans(sampleVectors(vectors), vectors, debug = true)
-    //val results = clusterResults(means, vectors)
-    //printResults(results)
+    val means   = kmeans(sampleVectors(vectors), vectors, debug = true)
+    val results = clusterResults(means, vectors)
+    printResults(results)
   }
 }
 
@@ -175,6 +175,9 @@ class StackOverflow extends Serializable {
     val newMeans = means.clone() // you need to compute newMeans
 
     // TODO: Fill in the newMeans array
+    val tmpMeans = vectors.map(p => (findClosest(p, means),p)).groupByKey().mapValues(averageVectors).collect()
+    tmpMeans foreach(kv => newMeans.update(kv._1, kv._2))
+
     val distance = euclideanDistance(means, newMeans)
 
     if (debug) {
@@ -275,10 +278,18 @@ class StackOverflow extends Serializable {
     val closestGrouped = closest.groupByKey()
 
     val median = closestGrouped.mapValues { vs =>
-      val langLabel: String   = ??? // most common language in the cluster
-      val langPercent: Double = ??? // percent of the questions in the most common language
-      val clusterSize: Int    = ???
-      val medianScore: Int    = ???
+      val m = vs.groupBy(_._1).maxBy(qa => qa._2.size)
+      val langLabel: String   = langs(m._1/langSpread) // most common language in the cluster
+      val langPercent: Double = m._2.size.toDouble*100/vs.size // percent of the questions in the most common language
+      val clusterSize: Int    = vs.size
+      val sorted = vs.map(_._2).toVector.sorted
+      val medianScore: Int    = {
+        if(sorted.size % 2 == 1){
+          sorted(sorted.size / 2)
+        }else{
+          (sorted(sorted.size / 2) + sorted(sorted.size / 2 - 1)) / 2
+        }
+      }
 
       (langLabel, langPercent, clusterSize, medianScore)
     }
